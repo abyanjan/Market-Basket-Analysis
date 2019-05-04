@@ -293,6 +293,8 @@ inspect(head(tr))
     ##      VINTAGE HEADS AND TAILS CARD GAME,                
     ##      VINTAGE SEASIDE JIGSAW PUZZLES}
 
+\*\* TOp 10 frequent items in the transactions\*\*
+
 ``` r
 itemFrequencyPlot(tr,topN = 10, type = "absolute", horiz = TRUE, col = "blue")
 ```
@@ -322,10 +324,10 @@ rules <- apriori(tr, parameter = list(support = 0.009,  confidence = 0.7,
     ## Absolute minimum support count: 233 
     ## 
     ## set item appearances ...[0 item(s)] done [0.00s].
-    ## set transactions ...[8978 item(s), 25900 transaction(s)] done [0.05s].
+    ## set transactions ...[8978 item(s), 25900 transaction(s)] done [0.04s].
     ## sorting and recoding items ... [490 item(s)] done [0.02s].
     ## creating transaction tree ... done [0.00s].
-    ## checking subsets of size 1 2 3 4 done [0.02s].
+    ## checking subsets of size 1 2 3 4 done [0.04s].
     ## writing ... [33 rule(s)] done [0.00s].
     ## creating S4 object  ... done [0.00s].
 
@@ -441,9 +443,9 @@ sugar_rules <- apriori(tr, parameter = list(support = 0.009, confidence = 0.7),
     ## Absolute minimum support count: 233 
     ## 
     ## set item appearances ...[1 item(s)] done [0.00s].
-    ## set transactions ...[8978 item(s), 25900 transaction(s)] done [0.06s].
-    ## sorting and recoding items ... [490 item(s)] done [0.00s].
-    ## creating transaction tree ... done [0.02s].
+    ## set transactions ...[8978 item(s), 25900 transaction(s)] done [0.05s].
+    ## sorting and recoding items ... [490 item(s)] done [0.02s].
+    ## creating transaction tree ... done [0.00s].
     ## checking subsets of size 1 2 3 4 done [0.02s].
     ## writing ... [3 rule(s)] done [0.00s].
     ## creating S4 object  ... done [0.00s].
@@ -483,8 +485,8 @@ with_sugar <- apriori(tr, parameter = list(support = 0.009, confidence = 0.7),
     ## Absolute minimum support count: 233 
     ## 
     ## set item appearances ...[1 item(s)] done [0.00s].
-    ## set transactions ...[8978 item(s), 25900 transaction(s)] done [0.07s].
-    ## sorting and recoding items ... [490 item(s)] done [0.01s].
+    ## set transactions ...[8978 item(s), 25900 transaction(s)] done [0.04s].
+    ## sorting and recoding items ... [490 item(s)] done [0.02s].
     ## creating transaction tree ... done [0.00s].
     ## checking subsets of size 1 2 done [0.00s].
     ## writing ... [2 rule(s)] done [0.00s].
