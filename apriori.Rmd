@@ -1,0 +1,304 @@
+---
+title: "Market Basket Analysis"
+output: github_document
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+# Libraries
+
+```{r, message=FALSE}
+
+library(readxl)
+library(tidyverse)
+library(lubridate)
+library(arules)
+library(arulesViz)
+library(tidyquant)
+library(plotly)
+
+```
+
+# Data
+
+We will use the Online Retail data available at [UCI repository] (https://archive.ics.uci.edu/ml/datasets/online+retail).
+
+```{r}
+
+retails_df <- read_excel("Online Retail.xlsx")
+
+head(retails_df,10) %>% knitr::kable()
+
+```
+
+# EDA
+
+We will first have a look at the data before we do the analysis.
+
+**Most Purchased Items**
+
+```{r}
+
+theme_set(theme_tq())
+
+retails_df %>% 
+  dplyr::count(Description, sort = TRUE) %>% 
+  drop_na() %>% 
+  head(15) %>% 
+  ggplot(aes(x = reorder(Description,n), y = n))+
+  geom_col(aes(fill = 'blue'), show.legend = FALSE)+
+  coord_flip()+
+  labs(title = "Top 15 Products Purchased",x = "", y = "Counts")+
+  scale_fill_tq()
+
+```
+
+
+**Summary of Items purchased per transaction**
+
+```{r}
+
+retails_df %>% 
+  count(InvoiceNo, sort = T) %>% 
+  summarise_at(vars(n), funs(mean, median, min, max))
+
+
+```
+
+**Average itmes purchased per transaction by country**
+
+```{r}
+
+p1 <- retails_df %>% 
+  count(InvoiceNo, Country) %>% 
+  group_by(Country) %>% 
+  summarise(total_trans = n(),
+            total_items = sum(n)) %>% 
+  mutate(avg_items_per_trans = total_items/total_trans,
+         Country = fct_reorder(Country,avg_items_per_trans)) %>%
+  ggplot(aes(x = Country,y = avg_items_per_trans))+
+  geom_col(aes(fill = 'blue'), show.legend = FALSE)+
+  coord_flip()+
+  labs(title = "Average items purchased per transaction by Country",
+       x = "", y = "Average items Purchased")+
+  scale_fill_tq()
+
+ggplotly(p1, tooltip = c("x","y")) %>% hide_legend()
+ 
+
+```
+
+
+**What time of the day most purchase take place..**
+
+```{r}
+
+p2 <- retails_df %>% 
+  mutate(hr_day = hour(InvoiceDate)) %>% 
+  group_by(InvoiceNo) %>% 
+  slice(1) %>% 
+  ungroup() %>% 
+  mutate(hr_day = as.factor(hr_day)) %>% 
+  ggplot(aes(x = hr_day))+
+  geom_bar(aes(fill = 'blue'), show.legend = FALSE)+
+  labs(title = "Distribution of Hour of Transaction", x = 'Hour of Day',
+       y = "Transactions")+
+  scale_fill_tq()
+
+ggplotly(p2, tooltip = c("x","y")) %>% hide_legend()
+ 
+
+```
+
+
+
+# Preprocessing Data
+
+Our data is currently in data frame format, but we need the data in 'transactions' format to perform market basket anaysis with arules package.
+
+**Preparing data in the transactions format for association rules analysis**
+
+
+```{r}
+library(plyr)
+
+retails_transactions <- ddply(.data = retails_df, 
+                              .variables = c('InvoiceNo'),
+                              .fun = function(df)paste(df$Description, collapse = ",")
+                               )
+
+
+retails_transactions %>% head() %>% knitr::kable()
+
+```
+
+
+We can see now the data is arranged in transaction format where each row represents a transaction. For further analysis we will only need the coulumn that contains the items purchased and each item in the coulmn represents a tansaction.
+
+**Saving the transaction data**
+
+```{r}
+
+transactions <- retails_transactions %>% 
+  dplyr::rename(items = V1) %>% 
+  select(items) 
+
+write.csv(transactions,"transactions.csv",quote = FALSE, row.names = FALSE )
+
+
+```
+
+
+
+**Read the transactions data that we just saved for rule mining**
+
+```{r}
+
+tr <- read.transactions("transactions.csv",format = 'basket',
+                               sep = ",", rm.duplicates = TRUE, skip = 1)
+
+tr
+
+```
+
+```{r}
+summary(tr)
+
+```
+
+Inspect few of the transactions
+
+```{r}
+inspect(head(tr))
+```
+
+
+```{r}
+
+itemFrequencyPlot(tr,topN = 10, type = "absolute", horiz = TRUE, col = "blue")
+```
+
+
+# Generating Rules
+
+```{r}
+
+rules <- apriori(tr, parameter = list(support = 0.009,  confidence = 0.7, 
+                                             maxlen = 4) )
+
+```
+
+```{r}
+
+summary(rules)
+
+```
+
+**Inspecting the rules**
+
+```{r}
+
+inspect(head(rules))
+
+```
+
+
+**Removing Redundant rules**
+
+```{r}
+# reduntand rules
+
+inspect(rules[is.redundant(rules)])
+
+```
+
+```{r}
+# Removing redundant rules
+
+rules <- rules[!is.redundant(rules)]
+
+```
+
+
+**Top 10 Rules bsed on the lift**
+
+```{r}
+
+top_rules <- sort(rules, by = 'lift', decreasing = TRUE)[1:10]
+
+inspect(top_rules)
+
+```
+
+
+**What are the products influencing sugar purchase?**
+
+```{r}
+
+sugar_rules <- apriori(tr, parameter = list(support = 0.009, confidence = 0.7),
+                       appearance = list(default = 'lhs', rhs = 'SUGAR'))
+
+```
+
+```{r}
+
+inspect(sort(sugar_rules, by = 'lift', decreasing = TRUE))
+
+```
+
+**What products are purchased with sugar?**
+
+```{r}
+with_sugar <- apriori(tr, parameter = list(support = 0.009, confidence = 0.7),
+                       appearance = list(default = 'rhs', lhs = 'SUGAR'))
+
+```
+
+```{r}
+ inspect(sort(with_sugar, by = 'lift', decreasing = TRUE))
+
+```
+
+
+# Visualization
+
+**Scatter plot of all rules**
+
+```{r}
+
+plot(rules)
+
+```
+
+
+**Interactive Scatter plot of top 10 rules**
+
+```{r}
+plotly_arules(top_rules)
+```
+
+** Interactive Matrix Plot**
+
+```{r}
+plotly_arules(rules, method = "matrix")
+
+```
+
+
+**Network Plot for top 10 rules**
+
+```{r}
+
+plot(top_rules, method = 'graph', engine = 'htmlwidget'
+       )
+
+```
+
+
